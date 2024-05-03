@@ -1,0 +1,51 @@
+version: "3.8"
+
+x-common-variables:
+  master-hostname: &master-hostname 'master-hostname'
+  master-replicas: &master-replicas 3
+  redis-port: &redis-port 6389
+  redis-mem: &redis-mem 2G
+
+services:
+  master:
+    image: redis:current
+    build: .
+    hostname: master-hostname{{.Task.Slot}} #must be the same as &master-hostname
+    restart: always
+    environment:
+      MASTER_HOST: *master-hostname
+      REDIS_PORT: *redis-port
+      REDIS_MAXMEM: *redis-mem
+      SLOT_NUM: '{{.Task.Slot}}'
+      SLOTS_TOTAL: *master-replicas 
+      MASTERS_TOTAL: 2
+    deploy:
+      resources:
+         limits:
+           cpus: '2'
+           memory: *redis-mem
+      replicas: *master-replicas
+      restart_policy:
+        condition: any
+
+  app:
+    image: jeko/redis-cluster-proxy:unstable
+    ports:
+     - 16379:7788
+    restart: always
+    environment:
+      MASTER_HOST: *master-hostname
+      MASTER_PORT: *redis-port
+      SLOTS_TOTAL: *master-replicas
+    entrypoint: /bin/sh
+    command: -c "redis-cluster-proxy --port 7788 $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    deploy:
+#      resources:
+#         limits:
+#           cpus: '2'
+#           memory: '2G'
+      replicas: 1
+      restart_policy:
+        condition: any
+
+    

@@ -27,7 +27,8 @@ services:
       replicas: *master-replicas
       placement:
         constraints: 
-         - "node.labels.CPUCORES==20"
+         - "node.labels.LATENCY!=high"
+         - "node.labels.MEM!=low"
       restart_policy: 
         condition: any
   app:
@@ -40,7 +41,7 @@ services:
       MASTER_PORT: *redis-port
       SLOTS_TOTAL: *master-replicas
     entrypoint: /bin/sh
-    command: -c "redis-cluster-proxy --enable-cross-slot --port 7788 $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    command: -c "redis-cluster-proxy --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot --port 7788 $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
     deploy:
 #      resources:
 #         limits:
@@ -48,7 +49,8 @@ services:
 #           memory: '2G'
       placement:
         constraints: 
-         - "node.labels.UNSTABLE!=true"
+         - "node.labels.LATENCY!=high"
+         - "node.labels.MEM!=low"
         max_replicas_per_node: 1
       replicas: 2
       restart_policy:

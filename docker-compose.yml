@@ -46,7 +46,11 @@ services:
 #         limits:
 #           cpus: '2'
 #           memory: '2G'
-      replicas: 1
+      placement:
+        constraints: 
+         - "node.labels.UNSTABLE!=true"
+        max_replicas_per_node: 1
+      replicas: 2
       restart_policy:
         condition: any
 

@@ -49,16 +49,14 @@ if [ ! "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | gr
 fi
 
 if [ "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | grep master | wc -l)" = "$MASTERS_TOTAL" ]; then
-	echo "Masters full lets connect as slave"
+	echo "Masters full, lets connect as slave"
 	SLAVE="--cluster-slave";
-	sleep 120
+	redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT || sleep 250 # sleep to allow master finish rebalance
 fi
 
 
-#if [ -n "$REDIS_MASTER" ]; then
-	redis-cli --cluster add-node $(hostname):$REDIS_PORT $MASTER_HOST$MASTER_NUM:$REDIS_PORT $SLAVE || pkill redis-server
-
-	sleep 3
+redis-cli --cluster add-node $(hostname):$REDIS_PORT $MASTER_HOST$MASTER_NUM:$REDIS_PORT $SLAVE || pkill redis-server
+sleep 3
 
 if [ ! -n "$SLAVE" ]; then
 
@@ -68,6 +66,8 @@ if [ ! -n "$SLAVE" ]; then
 	fi
 
 fi
+
+echo Done
 #else #SLAVE
 
 #sh -c "sleep 10;\

@@ -2,9 +2,13 @@ version: "3.8"
 
 x-common-variables:
   master-hostname: &master-hostname 'redis-node'
-  master-replicas: &master-replicas 6
+  master-nodes: &master-nodes 3
+  redis-replicas: &redis-replicas 6
   redis-port: &redis-port 6389
   redis-mem: &redis-mem 2G
+
+networks:
+  internal:
 
 services:
   nodes:
@@ -17,14 +21,16 @@ services:
       REDIS_PORT: *redis-port
       REDIS_MAXMEM: *redis-mem
       SLOT_NUM: '{{.Task.Slot}}'
-      SLOTS_TOTAL: *master-replicas 
-      MASTERS_TOTAL: 3
+      SLOTS_TOTAL: *redis-replicas 
+      MASTERS_TOTAL: *master-nodes
+    networks:
+     - internal
     deploy:
       resources:
          limits:
            cpus: '2'
            memory: *redis-mem
-      replicas: *master-replicas
+      replicas: *redis-replicas
       placement:
         constraints: 
          - "node.labels.LATENCY!=high"
@@ -34,14 +40,16 @@ services:
   app:
     image: jeko/redis-cluster-proxy:unstable
     ports:
-     - 16379:7788
+     - 6379:6379
     restart: always
     environment:
       MASTER_HOST: *master-hostname
       MASTER_PORT: *redis-port
-      SLOTS_TOTAL: *master-replicas
+      SLOTS_TOTAL: *redis-replicas
+    networks:
+     - internal
     entrypoint: /bin/sh
-    command: -c "redis-cluster-proxy --port 7788 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    command: -c "redis-cluster-proxy --port 6379 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
     deploy:
 #      resources:
 #         limits:

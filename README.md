@@ -16,7 +16,7 @@ x-common-variables:
 
 ```
 
-- master-nodes - number of master nodes in cluster
+- master-nodes - number of master nodes in cluster (other nodes are added as slaves)
 - redis-replicas - number of all nodes in cluster
 - redis-port - internal port of redis-server on redis node
 - redis-mem -  max mem size available for redis node

@@ -1,16 +1,16 @@
 version: "3.8"
 
 x-common-variables:
-  master-hostname: &master-hostname 'master-hostname'
-  master-replicas: &master-replicas 3
+  master-hostname: &master-hostname 'redis-node'
+  master-replicas: &master-replicas 6
   redis-port: &redis-port 6389
   redis-mem: &redis-mem 2G
 
 services:
-  master:
+  nodes:
     image: redis:current
     build: .
-    hostname: master-hostname{{.Task.Slot}} #must be the same as &master-hostname
+    hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always
     environment:
       MASTER_HOST: *master-hostname
@@ -18,16 +18,18 @@ services:
       REDIS_MAXMEM: *redis-mem
       SLOT_NUM: '{{.Task.Slot}}'
       SLOTS_TOTAL: *master-replicas 
-      MASTERS_TOTAL: 2
+      MASTERS_TOTAL: 3
     deploy:
       resources:
          limits:
            cpus: '2'
            memory: *redis-mem
       replicas: *master-replicas
-      restart_policy:
+      placement:
+        constraints: 
+         - "node.labels.CPUCORES==20"
+      restart_policy: 
         condition: any
-
   app:
     image: jeko/redis-cluster-proxy:unstable
     ports:
@@ -38,7 +40,7 @@ services:
       MASTER_PORT: *redis-port
       SLOTS_TOTAL: *master-replicas
     entrypoint: /bin/sh
-    command: -c "redis-cluster-proxy --port 7788 $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    command: -c "redis-cluster-proxy --enable-cross-slot --port 7788 $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
     deploy:
 #      resources:
 #         limits:

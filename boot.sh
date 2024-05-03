@@ -8,11 +8,11 @@ if [ ! "$(redis-cli -p $REDIS_PORT cluster nodes | wc -l || echo 1)" = "1" ]; th
 #	redis-cli -p $REDIS_PORT CLUSTER RESET;
 fi
 
-sleep $SLOTS_TOTAL
+sleep $(((SLOT_NUM-1)*20))
 
-if [ ! "$SLOT_NUM" = "1" ]; then 
-	sleep $((RANDOM % 60)); #aviod race condition
-fi
+#if [ ! "$SLOT_NUM" = "1" ]; then 
+#	sleep $((RANDOM % 60)); #aviod race condition
+#fi
 MASTER_NUM=0
 
 
@@ -37,7 +37,7 @@ if [ "$MASTER_NUM" = "0" ]; then
 fi
 
 redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT || yes yes|redis-cli --cluster fix $MASTER_HOST$MASTER_NUM:$REDIS_PORT --cluster-fix-with-unreachable-masters
-sleep 5
+sleep 3
 
 if [ ! "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | grep fail | wc -l || echo 0)" = "0" ]; then 
         echo "Found failed nodes, need to clean up";
@@ -45,19 +45,20 @@ if [ ! "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | gr
 		echo "Foget about node $i"
 		redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster forget $i
 	done
-	sleep 5
+	sleep 3
 fi
 
 if [ "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | grep master | wc -l)" = "$MASTERS_TOTAL" ]; then
 	echo "Masters full lets connect as slave"
 	SLAVE="--cluster-slave";
+	sleep 120
 fi
 
 
 #if [ -n "$REDIS_MASTER" ]; then
 	redis-cli --cluster add-node $(hostname):$REDIS_PORT $MASTER_HOST$MASTER_NUM:$REDIS_PORT $SLAVE || pkill redis-server
 
-	sleep 5
+	sleep 3
 
 if [ ! -n "$SLAVE" ]; then
 

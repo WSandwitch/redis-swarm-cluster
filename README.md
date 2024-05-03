@@ -29,5 +29,5 @@ If you want, you can change the most right value. If you will change hostname, y
 wget https://raw.githubusercontent.com/WSandwitch/redis-swarm-cluster/dev/docker-compose.yml
 docker stack deploy -c docker-compose.yml redis
 ```
-After that it takes several minutes for cluster to be build and get ready, and after that you can access it on 6379 port (by default).
+After that it takes several minutes for cluster to be build and get ready, and then you can access it on 6379 port (by default).
 

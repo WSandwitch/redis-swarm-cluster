@@ -36,7 +36,11 @@ if [ "$MASTER_NUM" = "0" ]; then
 	redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT CLUSTER ADDSLOTSRANGE 0 16383;
 fi
 
-redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT || yes yes|redis-cli --cluster fix $MASTER_HOST$MASTER_NUM:$REDIS_PORT --cluster-fix-with-unreachable-masters
+#check for cluster status and fix if necessary
+redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT ||\
+  redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT | grep "WARN" ||\
+  yes yes|redis-cli --cluster fix $MASTER_HOST$MASTER_NUM:$REDIS_PORT --cluster-fix-with-unreachable-masters
+
 sleep 3
 
 if [ ! "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | grep fail | wc -l || echo 0)" = "0" ]; then 
@@ -51,7 +55,8 @@ fi
 if [ "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | grep master | wc -l)" = "$MASTERS_TOTAL" ]; then
 	echo "Masters full, lets connect as slave"
 	SLAVE="--cluster-slave";
-	redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT || sleep 250 # sleep to allow master finish rebalance
+#	redis-cli --cluster check $MASTER_HOST$MASTER_NUM:$REDIS_PORT || 
+	sleep 250 # sleep to allow master finish rebalance
 fi
 
 

@@ -8,8 +8,8 @@ x-common-variables:
 
 services:
   nodes:
-    image: redis:current
-    build: .
+    image: wsandwitch/redis-cluster:latest
+#    build: .
     hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always
     environment:
@@ -41,7 +41,7 @@ services:
       MASTER_PORT: *redis-port
       SLOTS_TOTAL: *master-replicas
     entrypoint: /bin/sh
-    command: -c "redis-cluster-proxy --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot --port 7788 $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    command: -c "redis-cluster-proxy --port 7788 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
     deploy:
 #      resources:
 #         limits:

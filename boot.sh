@@ -61,12 +61,13 @@ fi
 
 
 redis-cli --cluster add-node $(hostname):$REDIS_PORT $MASTER_HOST$MASTER_NUM:$REDIS_PORT $SLAVE || pkill redis-server
-sleep 3
+sleep 10
 
 if [ ! -n "$SLAVE" ]; then
 
 	if [ "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster nodes | grep master | wc -l)" = "$MASTERS_TOTAL" ]; then
 		echo "Cluster is full, lets rebalance"
+		redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT cluster info | grep "cluster_state" | grep "ok" || sleep 30
 		redis-cli --cluster rebalance $MASTER_HOST$MASTER_NUM:$REDIS_PORT --cluster-use-empty-masters || pkill redis-server
 	fi
 

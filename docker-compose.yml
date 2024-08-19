@@ -27,13 +27,13 @@ services:
         condition: any
 
   nodes:
-    image: wsandwitch/redis-cluster:latest
-#    build: .
+    image: wsandwitch/redis-cluster:arbiter
+    build: .
     hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always
     environment:
       ARBITER_HOST: redis-arbiter
-      ARBITER_PORT: 3879
+      ARBITER_PORT: 6379
       MASTER_HOST: *master-hostname
       REDIS_PORT: *redis-port
       REDIS_MAXMEM: *redis-mem
@@ -54,6 +54,7 @@ services:
          - "node.labels.MEM!=low"
       restart_policy: 
         condition: any
+
   app:
     image: jeko/redis-cluster-proxy:unstable
     ports:
@@ -67,6 +68,8 @@ services:
      - internal
     entrypoint: /bin/sh
     command: -c "redis-cluster-proxy --port 6379 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --raw set a 1 | grep 1"]
     deploy:
 #      resources:
 #         limits:

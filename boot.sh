@@ -16,19 +16,23 @@ done
 #fi
 
 #wait for arbiter
-while [ ! "$(redis-cli -h $ARBITER_HOST -h $ARBITER_PORT --raw keys '*' >/dev/null && echo 1 || echo 0)" = "1" ]; do
+while [ ! "$(redis-cli -h $ARBITER_HOST -p $ARBITER_PORT --raw keys '*' >/dev/null && echo 1 || echo 0)" = "1" ]; do
 	sleep 5
 done
 
+#if container was killed before
+if [ "$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT GET lock)" = "$SLOT_NUM" ]; then
+	redis-cli -h $ARBITER_HOST -p $ARBITER_PORT DEL lock
+fi
 
 #try to lock
-while [ ! "$(redis-cli --raw -h $ARBITER_HOST -h $ARBITER_PORT SETNX lock 1)" = "1" ]; do
+while [ ! "$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT SETNX lock $SLOT_NUM)" = "1" ]; do
 	sleep 1
 done
 	echo "{INFO} Lock set"
 
 	function cleanup {
-		while [ ! "$(redis-cli --raw -h $ARBITER_HOST -h $ARBITER_PORT DEL lock)" = "1" ]; do
+		while [ ! "$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT DEL lock)" = "1" ]; do
 			sleep 1
 		done
 		echo "{INFO} Lock released"
@@ -38,9 +42,9 @@ done
 	if [ "$DEBUG" = "1" ]; then sleep 3; fi	#debug
 
 	#try to set self as primary master
-	if [ ! "$(redis-cli --raw -h $ARBITER_HOST -h $ARBITER_PORT SETNX master $SLOT_NUM)" = "1" ]; then
+	if [ ! "$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT SETNX master $SLOT_NUM)" = "1" ]; then
 		#othervise get already declared one
-		MASTER_NUM=$(redis-cli --raw -h $ARBITER_HOST -h $ARBITER_PORT GET master)
+		MASTER_NUM=$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT GET master)
 	fi
 
 	#check whether there is no node already in cluster (if arbiter restarted)
@@ -85,8 +89,8 @@ done
 				echo "{INFO} node in cluster not found, I will be Master"
 				MASTER_NUM=$SLOT_NUM
 			fi
-			redis-cli --raw -h $ARBITER_HOST -h $ARBITER_PORT DEL master >/dev/null
-			redis-cli --raw -h $ARBITER_HOST -h $ARBITER_PORT SETNX master $MASTER_NUM >/dev/null
+			redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT DEL master >/dev/null
+			redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT SETNX master $MASTER_NUM >/dev/null
 
 		fi
 

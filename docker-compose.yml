@@ -11,12 +11,28 @@ networks:
   internal:
 
 services:
+  arbiter:
+    image: redis:7-alpine
+    hostname: redis-arbiter
+    restart: always
+    networks:
+     - internal
+    deploy:
+      resources:
+         limits:
+           cpus: '0.5'
+           memory: 100M
+      replicas: 1
+      restart_policy: 
+        condition: any
+
   nodes:
     image: wsandwitch/redis-cluster:latest
 #    build: .
     hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always
     environment:
+      ARBITER_HOST: redis-arbiter
       MASTER_HOST: *master-hostname
       REDIS_PORT: *redis-port
       REDIS_MAXMEM: *redis-mem

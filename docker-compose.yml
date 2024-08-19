@@ -33,6 +33,7 @@ services:
     restart: always
     environment:
       ARBITER_HOST: redis-arbiter
+      ARBITER_PORT: 3879
       MASTER_HOST: *master-hostname
       REDIS_PORT: *redis-port
       REDIS_MAXMEM: *redis-mem

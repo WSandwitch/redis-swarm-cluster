@@ -27,7 +27,7 @@ services:
         condition: any
 
   nodes:
-    image: wsandwitch/redis-cluster:arbiter
+    image: wsandwitch/redis-cluster:v1.1
     build: .
     hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always
@@ -67,9 +67,9 @@ services:
     networks:
      - internal
     entrypoint: /bin/sh
-    command: -c "redis-cluster-proxy --port 6379 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 5);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    command: -c "redis-cluster-proxy --port 6379 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 3);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --raw set a 1 | grep 1"]
+      test: ["CMD-SHELL", "redis-cli --raw set a 1 | grep OK"]
     deploy:
 #      resources:
 #         limits:

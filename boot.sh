@@ -1,7 +1,7 @@
 ARBITER_PORT=${ARBITER_PORT:-6379}
 MASTER_NUM=$SLOT_NUM
 echo "{INFO} Redis node (arbiter version) started"
-
+sleep 3 #wait redis-server to be ready
 if [ "$DEBUG" = "1" ]; then sleep 3; fi	#debug
 
 #wait self to start
@@ -11,8 +11,8 @@ done
 
 #if [ ! "$(redis-cli -p $REDIS_PORT cluster nodes | wc -l || echo 1)" = "1" ]; then 
 #	echo "Node is already in cluster";
-#	redis-cli -p $REDIS_PORT FLUSHALL;
-#	redis-cli -p $REDIS_PORT CLUSTER RESET;
+	redis-cli -p $REDIS_PORT FLUSHALL >/dev/null
+	redis-cli -p $REDIS_PORT CLUSTER RESET >/dev/null
 #fi
 
 #wait for arbiter
@@ -22,7 +22,7 @@ done
 
 #if container was killed before
 if [ "$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT GET lock)" = "$SLOT_NUM" ]; then
-	redis-cli -h $ARBITER_HOST -p $ARBITER_PORT DEL lock
+	redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT DEL lock >/dev/null
 fi
 
 #try to lock
@@ -45,13 +45,14 @@ done
 	if [ ! "$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT SETNX master $SLOT_NUM)" = "1" ]; then
 		#othervise get already declared one
 		MASTER_NUM=$(redis-cli --raw -h $ARBITER_HOST -p $ARBITER_PORT GET master)
+		echo "{INFO} Master already declared, lets use $MASTER_NUM"
 	fi
 
 	#check whether there is no node already in cluster (if arbiter restarted)
 	if [ "$MASTER_NUM" = "$SLOT_NUM" ]; then
 		for i in $(seq 1 $SLOTS_TOTAL); do  
-			if [ ! "$(redis-cli -h $MASTER_HOST$i -p $REDIS_PORT cluster nodes | wc -l || echo 1)" = "1" ]; then
-				echo "{INFO} Node $i is already in cluster, select it is primary"
+			if [ ! "$( (redis-cli -h $MASTER_HOST$i -p $REDIS_PORT cluster nodes || echo 1) | wc -l )" = "1" ]; then
+				echo "{INFO} Node $i is already in cluster, select it as primary"
 				MASTER_NUM=$i
 				break
 			fi
@@ -63,11 +64,11 @@ done
 		#check wether primary master is alive 
 		if [ ! "$(redis-cli -h $MASTER_HOST$MASTER_NUM -p $REDIS_PORT --raw keys '*' >/dev/null && echo 1 || echo 0)" = "1" ]; then
 			echo "{INFO} Could not connect to master" 
-			#lat stry to find another master
+			#lats try to find another master
 			MASTER_NUM=0
 
 			for i in $(seq 1 $SLOTS_TOTAL); do  
-				if [ ! "$(redis-cli -h $MASTER_HOST$i -p $REDIS_PORT cluster nodes | wc -l || echo 1)" = "1" ]; then
+				if  [ ! "$( (redis-cli -h $MASTER_HOST$i -p $REDIS_PORT cluster nodes || echo 1) | wc -l )" = "1" ]; then
 					echo "{INFO} Node $i is in cluster, select it"
 					MASTER_NUM=$i
 					break
@@ -77,7 +78,7 @@ done
 			if [ "$MASTER_NUM" = "0" ]; then
 				echo "{INFO} Node in cluster not found, searching for first running node" #TODO: add check for slot range
 				for i in $(seq 1 $SLOTS_TOTAL); do  
-						if [ ! "$(redis-cli -h $MASTER_HOST$i -p $REDIS_PORT cluster nodes | wc -l || echo 0)" = "0" ]; then
+						if [ ! "$(redis-cli -h $MASTER_HOST$i -p $REDIS_PORT cluster nodes | wc -l || echo 0 )" = "0" ]; then
 								echo "{INFO} $i is alive, select it"
 								MASTER_NUM=$i     
 								break 

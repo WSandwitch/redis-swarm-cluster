@@ -12,7 +12,7 @@ networks:
 
 services:
   arbiter:
-    image: redis:7-alpine
+    image: redis:7-alpine3.20
     hostname: redis-arbiter
     restart: always
     networks:
@@ -27,7 +27,7 @@ services:
         condition: any
 
   nodes:
-    image: wsandwitch/redis-cluster:v1.2
+    image: wsandwitch/redis-cluster:v1.3
     build: .
     hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always

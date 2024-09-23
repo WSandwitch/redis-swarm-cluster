@@ -4,7 +4,7 @@ Docker swarm config for distributed redis cache. It can be used as distributed r
 Stack includes 3 services:
 - nodes - redis server node, ([Dockerfile](https://github.com/WSandwitch/redis-swarm-cluster/blob/dev/Dockerfile) in this repo).
 - app - [redis proxy](https://github.com/j3k0/redis-cluster-proxy), configured to work with internal redis cluster.
- - arbiter(optional) - redis instance for syncronise nodes initialisation
+ - arbiter(optional) - redis instance for syncronise nodes initialisation (can be included in stack, or used external service)
 ###
 Main configuration options moved to x-common-variables block:
 ```yaml
@@ -30,5 +30,5 @@ If you want, you can change the most right value. If you will change hostname, y
 wget https://raw.githubusercontent.com/WSandwitch/redis-swarm-cluster/master/docker-compose.yml
 docker stack deploy -c docker-compose.yml redis
 ```
-After that it takes several minutes for cluster to be built and get ready, and then you can access it on 6379 port (by default).
+After that it takes several minutes for cluster to start and get ready, and then you can access it on 6379 port (by default).
 

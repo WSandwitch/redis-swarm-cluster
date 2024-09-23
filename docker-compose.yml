@@ -27,7 +27,7 @@ services:
         condition: any
 
   nodes:
-    image: wsandwitch/redis-cluster:v1.1
+    image: wsandwitch/redis-cluster:v1.2
     build: .
     hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
     restart: always
@@ -40,6 +40,7 @@ services:
       SLOT_NUM: '{{.Task.Slot}}'
       SLOTS_TOTAL: *redis-replicas 
       MASTERS_TOTAL: *master-nodes
+      CHECK_PERIOD: 15
     networks:
      - internal
     deploy:

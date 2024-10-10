@@ -1,0 +1,85 @@
+version: "3.8"
+
+x-common-variables:
+  master-hostname: &master-hostname 'redis-node'
+  master-nodes: &master-nodes 3
+  redis-replicas: &redis-replicas 6
+  redis-port: &redis-port 6389
+  redis-mem: &redis-mem 2G
+
+networks:
+  internal:
+
+services:
+  arbiter:
+    image: redis:7-alpine3.20
+    hostname: redis-arbiter
+    restart: always
+    networks:
+     - internal
+    deploy:
+      resources:
+         limits:
+           cpus: '0.5'
+           memory: 100M
+      replicas: 1
+      restart_policy: 
+        condition: any
+
+  nodes:
+    image: wsandwitch/redis-cluster:v1.3
+    build: .
+    hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
+    restart: always
+    environment:
+      ARBITER_HOST: redis-arbiter
+      ARBITER_PORT: 6379
+      MASTER_HOST: *master-hostname
+      REDIS_PORT: *redis-port
+      REDIS_MAXMEM: *redis-mem
+      SLOT_NUM: '{{.Task.Slot}}'
+      SLOTS_TOTAL: *redis-replicas 
+      MASTERS_TOTAL: *master-nodes
+      CHECK_PERIOD: 15
+    networks:
+     - internal
+    deploy:
+      resources:
+         limits:
+           cpus: '2'
+           memory: *redis-mem
+      replicas: *redis-replicas
+      placement:
+        constraints: 
+         - "node.labels.LATENCY!=high"
+         - "node.labels.MEM!=low"
+      restart_policy: 
+        condition: any
+
+  app:
+    image: wsandwitch/rcproxy:latest
+    ports:
+     - 6379:6379
+    restart: always
+    environment:
+      SERVERS: redis-node1:6389
+      PORT: 6379
+    networks:
+     - internal
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --raw set a 1 | grep OK"]
+    deploy:
+#      resources:
+#         limits:
+#           cpus: '2'
+#           memory: '2G'
+      placement:
+        constraints: 
+         - "node.labels.LATENCY!=high"
+         - "node.labels.MEM!=low"
+        max_replicas_per_node: 1
+      replicas: 1
+      restart_policy:
+        condition: any
+
+    

@@ -190,6 +190,9 @@ while [ 1 -eq 1 ]; do
 			exit 1
 		fi
 		check_and_fix
+		if [ "$(redis-cli -p $REDIS_PORT cluster nodes | wc -l)" = "1" ]; then
+		        sleep 3
+		fi
 	lock_unset
 	sleep $CHECK_PERIOD
 done;

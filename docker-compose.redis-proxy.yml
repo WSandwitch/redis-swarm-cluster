@@ -57,7 +57,7 @@ services:
         condition: any
 
   app:
-    image: jeko/redis-cluster-proxy:unstable
+    image: wsandwitch/redis-cluster-proxy:alpine3.20
     ports:
      - 6379:6379
     restart: always

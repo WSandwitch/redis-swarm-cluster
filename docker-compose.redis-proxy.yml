@@ -6,41 +6,30 @@ x-common-variables:
   redis-replicas: &redis-replicas 6
   redis-port: &redis-port 6389
   redis-mem: &redis-mem 2G
+  redis-version: &redis-version 'wsandwitch/redis-cluster:v1.4'
 
 networks:
   internal:
 
 services:
-  arbiter:
-    image: redis:7-alpine3.20
-    hostname: redis-arbiter
-    restart: always
-    networks:
-     - internal
-    deploy:
-      resources:
-         limits:
-           cpus: '0.5'
-           memory: 100M
-      replicas: 1
-      restart_policy: 
-        condition: any
-
   nodes:
-    image: wsandwitch/redis-cluster:v1.3
+    image: *redis-version
     build: .
-    hostname: redis-node{{.Task.Slot}} #must be the same as &master-hostname
+    hostname: redis-node{{.Task.Slot}}
     restart: always
     environment:
-      ARBITER_HOST: redis-arbiter
-      ARBITER_PORT: 6379
       MASTER_HOST: *master-hostname
       REDIS_PORT: *redis-port
       REDIS_MAXMEM: *redis-mem
       SLOT_NUM: '{{.Task.Slot}}'
-      SLOTS_TOTAL: *redis-replicas 
+      SLOTS_TOTAL: *redis-replicas
       MASTERS_TOTAL: *master-nodes
       CHECK_PERIOD: 15
+      BOOTSTRAP_TIMEOUT: 120
+      BOOTSTRAP_STABLE: 10
+      NODE_TIMEOUT: 15000
+      REBALANCE: 1
+      LOCK_TTL: 120
     networks:
      - internal
     deploy:
@@ -50,11 +39,19 @@ services:
            memory: *redis-mem
       replicas: *redis-replicas
       placement:
-        constraints: 
+        constraints:
          - "node.labels.LATENCY!=high"
          - "node.labels.MEM!=low"
-      restart_policy: 
+        max_replicas_per_node: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
+        delay: 15s
+        monitor: 30s
+      restart_policy:
         condition: any
+        delay: 10s
+        max_attempts: 0
 
   app:
     image: wsandwitch/redis-cluster-proxy:alpine3.20
@@ -68,21 +65,15 @@ services:
     networks:
      - internal
     entrypoint: /bin/sh
-    command: -c "redis-cluster-proxy --port 6379 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 3);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
+    command: -c "redis-cluster-proxy --port 6379 --connections-pool-size 60 --connections-pool-min-size 20 --enable-cross-slot $$(sh -c 'for i in $$(seq -s \" \" 1 $$SLOTS_TOTAL);do echo $$MASTER_HOST$$i:$$MASTER_PORT;done')"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli --raw set a 1 | grep OK"]
     deploy:
-#      resources:
-#         limits:
-#           cpus: '2'
-#           memory: '2G'
       placement:
-        constraints: 
+        constraints:
          - "node.labels.LATENCY!=high"
          - "node.labels.MEM!=low"
         max_replicas_per_node: 1
       replicas: 2
       restart_policy:
         condition: any
-
-    

@@ -464,7 +464,7 @@ repair_cluster() {
 
 	if [ "$_state" != "ok" ] || [ "$_slots" != "16384" ]; then
 		log "cluster unhealthy (state=${_state:-?}, slots=${_slots:-?}); running fix"
-		_out=$(timeout "${REPAIR_TIMEOUT:-300}" redis-cli --cluster fix "$1:$REDIS_PORT" --cluster-yes --cluster-fix-with-unreachable-masters 2>&1)
+		_out=$(yes yes 2>/dev/null | timeout "${REPAIR_TIMEOUT:-300}" redis-cli --cluster fix "$1:$REDIS_PORT" --cluster-yes --cluster-fix-with-unreachable-masters 2>&1)
 		[ -n "$_out" ] && printf '%s\n' "$_out" | tail -n 30
 		wait_cluster_ok "$1" 60 || warn "cluster is still not healthy after fix"
 	fi

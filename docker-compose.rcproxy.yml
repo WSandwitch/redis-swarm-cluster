@@ -32,6 +32,11 @@ services:
       LOCK_TTL: 120
     networks:
      - internal
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 67108864
     deploy:
       resources:
          limits:

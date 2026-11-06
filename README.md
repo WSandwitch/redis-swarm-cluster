@@ -38,7 +38,7 @@ The maintenance loop:
 - rebalances empty masters when needed;
 - forgets stale disconnected nodes.
 
-Nodes keep no persistent data; Redis is used as a cache. A restarted or newly added node starts clean and joins the existing cluster automatically. A full stack restart rebuilds the cluster from scratch.
+Nodes keep no persistent data; Redis is used as a cache. Redis writes only to `/tmp`, which is mounted as tmpfs, so no Redis data is written to the real disk. A restarted or newly added node starts clean and joins the existing cluster automatically. A full stack restart rebuilds the cluster from scratch.
 
 ### Node variables
 
